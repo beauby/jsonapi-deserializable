@@ -1,7 +1,6 @@
-require 'jsonapi/validator'
+require 'jsonapi/validations'
 require 'jsonapi/deserializable/exceptions'
 require 'jsonapi/deserializable/resource_dsl'
-# TODO(beauby): Rename field_list
 
 module JSONAPI
   module Deserializable
