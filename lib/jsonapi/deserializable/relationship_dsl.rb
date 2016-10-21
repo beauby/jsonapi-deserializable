@@ -6,24 +6,14 @@ module JSONAPI
       end
 
       module ClassMethods
-        def has_one
-          validations[:kind] = :has_one
+        def has_one(&block)
+          block ||= proc { |rel| field key.to_sym => rel }
+          self.has_one_block = block
         end
 
-        def has_many
-          validations[:kind] = :has_many
-        end
-
-        def type(value)
-          (validations[:types] ||= []) << value
-        end
-
-        def types(values)
-          (validations[:types] ||= []).concat(values)
-        end
-
-        def field(key, &block)
-          field_blocks[key] = block
+        def has_many(&block)
+          block ||= proc { |rel| field key.to_sym => rel }
+          self.has_many_block = block
         end
       end
     end

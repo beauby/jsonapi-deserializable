@@ -1,5 +1,3 @@
-require 'jsonapi/validations'
-require 'jsonapi/deserializable/exceptions'
 require 'jsonapi/deserializable/resource_dsl'
 
 module JSONAPI
@@ -8,36 +6,92 @@ module JSONAPI
       include ResourceDSL
 
       class << self
-        attr_accessor :field_blocks, :validations
+        attr_accessor :type_block, :id_block
+        attr_accessor :attr_blocks
+        attr_accessor :has_one_rel_blocks, :has_many_rel_blocks
       end
 
-      self.field_blocks = {}
-      self.validations = {}
+      self.attr_blocks = {}
+      self.has_one_rel_blocks = {}
+      self.has_many_rel_blocks = {}
 
       def self.inherited(klass)
         super
-        klass.field_blocks = field_blocks.dup
-        klass.validations = Marshal.load(Marshal.dump(validations))
+        klass.type_block  = type_block
+        klass.id_block    = id_block
+        klass.attr_blocks = attr_blocks.dup
+        klass.has_one_rel_blocks  = has_one_rel_blocks.dup
+        klass.has_many_rel_blocks = has_many_rel_blocks.dup
+      end
+
+      def self.call(payload)
+        new(payload).to_h
       end
 
       def initialize(payload)
-        JSONAPI.validate_resource!(payload, self.class.validations)
         @document = payload
         @data = @document['data']
-        @attributes = @data['attributes']
+        @type = @data['type']
+        @id   = @data['id']
+        @attributes    = @data['attributes']
         @relationships = @data['relationships']
+        deserialize!
       end
 
       def to_h
-        return @_hash if @_hash
+        @hash
+      end
 
-        @_hash = {}
-        @_hash[:_payload] = @document
-        self.class.field_blocks.map do |k, v|
-          @_hash[k] = instance_eval(&v)
+      private
+
+      def deserialize!
+        @hash = {}
+        deserialize_type!
+        deserialize_id!
+        deserialize_attrs!
+        deserialize_rels!
+      end
+
+      def deserialize_type!
+        return unless @type && self.class.type_block
+        instance_exec(@type, &self.class.type_block)
+      end
+
+      def deserialize_id!
+        return unless @id && self.class.id_block
+        instance_exec(@id, &self.class.id_block)
+      end
+
+      def deserialize_attrs!
+        self.class.attr_blocks.each do |attr, block|
+          next unless @attributes[attr]
+          instance_exec(@attributes[attr], &block)
         end
+      end
 
-        @_hash
+      def deserialize_rels!
+        deserialize_has_one_rels!
+        deserialize_has_many_rels!
+      end
+
+      def deserialize_has_one_rels!
+        self.class.has_one_rel_blocks.each do |key, block|
+          rel = @relationships[key]
+          next unless rel && (rel['data'].nil? || rel['data'].is_a?(Hash))
+          instance_exec(rel, &block)
+        end
+      end
+
+      def deserialize_has_many_rels!
+        self.class.has_many_rel_blocks.each do |key, block|
+          rel = @relationships[key]
+          next unless rel && rel['data'].is_a?(Array)
+          instance_exec(rel, &block)
+        end
+      end
+
+      def field(hash)
+        @hash.merge!(hash)
       end
     end
   end

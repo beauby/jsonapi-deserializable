@@ -1,5 +1,3 @@
-require 'jsonapi/deserializable/validations'
-
 module JSONAPI
   module Deserializable
     module ResourceDSL
@@ -8,65 +6,32 @@ module JSONAPI
       end
 
       module ClassMethods
-        def required(&block)
-          add_validations!(Validations.new(:required, &block).to_h)
+        def type(&block)
+          block ||= proc { |type| field type: type }
+          self.type_block = block
         end
 
-        def optional(&block)
-          add_validations!(Validations.new(:optional, &block).to_h)
+        def id(&block)
+          block ||= proc { |id| field id: id }
+          self.id_block = block
         end
 
-        def field(key, &block)
-          field_blocks[key] = block
-        end
-
-        def id
-          field(:id) { @data['id'] }
-        end
-
-        def attribute(key, opts = {})
-          hash_key = (opts[:key] || key).to_s
-          field(key) { @attributes[hash_key] }
-        end
-
-        def has_many_ids(key, opts = {})
-          hash_key = (opts[:key] || key).to_s
-          field(key) do
-            @relationships[hash_key]['data'].map { |ri| ri['id'] }
+        def attribute(key, options = {}, &block)
+          unless block
+            options[:key] ||= key.to_sym
+            block = proc { |attr| field key => attr }
           end
+          attr_blocks[key.to_s] = block
         end
 
-        def has_many_types(key, opts = {})
-          hash_key = (opts[:key] || key).to_s
-          field(key) do
-            @relationships[hash_key]['data'].map { |ri| ri['type'] }
-          end
+        def has_one(key, &block)
+          block ||= proc { |rel| field key.to_sym => rel }
+          has_one_rel_blocks[key.to_s] = block
         end
 
-        def has_one_id(key, opts = {})
-          hash_key = (opts[:key] || key).to_s
-          field(key) { @relationships[hash_key]['data']['id'] }
-        end
-
-        def has_one_type(key, opts = {})
-          hash_key = (opts[:key] || key).to_s
-          field(key) { @relationships[hash_key]['data']['type'] }
-        end
-
-        private
-
-        def add_validations!(hash)
-          validations[:permitted] = hash[:permitted] if hash[:permitted]
-          validations[:required] = hash[:required] if hash[:required]
-          return unless hash[:types]
-          validations[:types] ||= {}
-          if hash[:types][:primary]
-            validations[:types][:primary] = hash[:types][:primary]
-          end
-          return unless hash[:types][:relationships]
-          validations[:types][:relationships] ||= {}
-          validations[:types][:relationships]
-            .merge!(hash[:types][:relationships])
+        def has_many(key, &block)
+          block ||= proc { |rel| field key.to_sym => rel }
+          has_many_rel_blocks[key.to_s] = block
         end
       end
     end
