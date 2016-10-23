@@ -78,20 +78,28 @@ module JSONAPI
         self.class.has_one_rel_blocks.each do |key, block|
           rel = @relationships[key]
           next unless rel && (rel['data'].nil? || rel['data'].is_a?(Hash))
-          id = rel['data'] && rel['data']['id']
-          type = rel['data'] && rel['data']['type']
-          instance_exec(rel, id, type, &block)
+          deserialize_has_one_rel!(rel, &block)
         end
+      end
+
+      def deserialize_has_one_rel!(rel, &block)
+        id = rel['data'] && rel['data']['id']
+        type = rel['data'] && rel['data']['type']
+        instance_exec(rel, id, type, &block)
       end
 
       def deserialize_has_many_rels!
         self.class.has_many_rel_blocks.each do |key, block|
           rel = @relationships[key]
           next unless rel && rel['data'].is_a?(Array)
-          ids = rel['data'].map { |ri| ri['id'] }
-          types = rel['data'].map { |ri| ri['type'] }
-          instance_exec(rel, ids, types, &block)
+          deserialize_has_many_rel!(rel, &block)
         end
+      end
+
+      def deserialize_has_many_rel!(rel, &block)
+        ids = rel['data'].map { |ri| ri['id'] }
+        types = rel['data'].map { |ri| ri['type'] }
+        instance_exec(rel, ids, types, &block)
       end
 
       def field(hash)
