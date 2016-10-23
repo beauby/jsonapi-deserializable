@@ -37,14 +37,14 @@ class DeserializableCreatePost < JSONAPI::Deserializable::Resource
   type
   attribute :title
   attribute :date { |date| field date: DateTime.parse(date) }
-  has_one :author do |rel|
-    field author_id: (rel['data'] && rel['data']['id'])
-    field author_type: (rel['data'] && rel['data']['type'])
+  has_one :author do |rel, id, type|
+    field author_id: id
+    field author_type: type
   end
-  has_many :comments do |rel|
-    field comment_ids: rel['data'].map { |ri| ri['id'] }
-    field comment_types: rel['data'].map do |ri|
-      camelize(singularize(ri['type']))
+  has_many :comments do |rel, ids, types|
+    field comment_ids: ids
+    field comment_types: types.map do |type|
+      camelize(singularize(type))
     end
   end
 end
@@ -90,11 +90,12 @@ DeserializableCreateUser.(payload)
 
 ```
 class DeserializablePostComments < JSONAPI::Deserializable::Relationship
-  has_many do |rel|
-    field comment_ids: rel['data'].map { |ri| ri['id'] }
-    field comment_types: rel['data'].map do |ri|
-      camelize(singularize(ri['type']))
+  has_many do |rel, ids, types|
+    field comment_ids: ids
+    field comment_types: types.map do |ri|
+      camelize(singularize(type))
     end
+    field comments_meta: rel['meta']
   end
 end
 ```
