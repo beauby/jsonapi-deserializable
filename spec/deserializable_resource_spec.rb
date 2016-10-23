@@ -110,11 +110,11 @@ describe JSONAPI::Deserializable::Resource, '#to_h' do
       id
       attribute(:name) { |name| field username: name }
       attribute :address
-      has_one :sponsor do |rel|
-        field sponsor_id: (rel['data'] && rel['data']['id'])
+      has_one :sponsor do
+        field sponsor_id: id
       end
-      has_many :posts do |rel|
-        field post_ids: rel['data'].map { |ri| ri['id'] }
+      has_many :posts do
+        field post_ids: ids
       end
     end
 

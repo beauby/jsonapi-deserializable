@@ -78,6 +78,7 @@ module JSONAPI
         self.class.has_one_rel_blocks.each do |key, block|
           rel = @relationships[key]
           next unless rel && (rel['data'].nil? || rel['data'].is_a?(Hash))
+          @rel_data = rel['data']
           instance_exec(rel, &block)
         end
       end
@@ -86,12 +87,31 @@ module JSONAPI
         self.class.has_many_rel_blocks.each do |key, block|
           rel = @relationships[key]
           next unless rel && rel['data'].is_a?(Array)
+          @rel_data = rel['data']
           instance_exec(rel, &block)
         end
       end
 
       def field(hash)
         @hash.merge!(hash)
+      end
+
+      # Association-specific helpers.
+
+      def id
+        @rel_data && @rel_data['id']
+      end
+
+      def type
+        @rel_data && @rel_data['type']
+      end
+
+      def ids
+        @rel_data.map { |ri| ri['id'] }
+      end
+
+      def types
+        @rel_data.map { |ri| ri['type'] }
       end
     end
   end

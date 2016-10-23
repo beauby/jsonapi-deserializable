@@ -42,6 +42,22 @@ module JSONAPI
       def field(hash)
         @hash.merge!(hash)
       end
+
+      def id
+        @data && @data['id']
+      end
+
+      def type
+        @data && @data['type']
+      end
+
+      def ids
+        @data.map { |ri| ri['id'] }
+      end
+
+      def types
+        @data.map { |ri| ri['type'] }
+      end
     end
   end
 end
