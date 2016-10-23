@@ -33,30 +33,18 @@ module JSONAPI
       def deserialize!
         @hash = {}
         if @data.is_a?(Array)
-          instance_exec(@document, &self.class.has_many_block)
+          ids = @data.map { |ri| ri['id'] }
+          types = @data.map { |ri| ri['type'] }
+          instance_exec(@document, ids, types, &self.class.has_many_block)
         else
-          instance_exec(@document, &self.class.has_one_block)
+          id = @data && @data['id']
+          type = @data && @data['type']
+          instance_exec(@document, id, type, &self.class.has_one_block)
         end
       end
 
       def field(hash)
         @hash.merge!(hash)
-      end
-
-      def id
-        @data && @data['id']
-      end
-
-      def type
-        @data && @data['type']
-      end
-
-      def ids
-        @data.map { |ri| ri['id'] }
-      end
-
-      def types
-        @data.map { |ri| ri['type'] }
       end
     end
   end
