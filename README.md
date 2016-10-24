@@ -4,6 +4,11 @@ payloads into custom hashes.
 Built upon the [jsonapi-validations](https://github.com/beauby/jsonapi/tree/master/validations)
 gem.
 
+## Status
+
+[![Gem Version](https://badge.fury.io/rb/jsonapi-deserializable.svg)](https://badge.fury.io/rb/jsonapi-deserializable)
+[![Build Status](https://secure.travis-ci.org/beauby/jsonapi-deserializable.svg?branch=master)](http://travis-ci.org/beauby/jsonapi-deserializable?branch=master)
+
 ## Installation
 ```ruby
 # In Gemfile
