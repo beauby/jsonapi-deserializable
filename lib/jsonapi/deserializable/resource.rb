@@ -64,7 +64,7 @@ module JSONAPI
 
       def deserialize_attrs!
         self.class.attr_blocks.each do |attr, block|
-          next unless @attributes[attr]
+          next unless @attributes.key?(attr)
           instance_exec(@attributes[attr], &block)
         end
       end
