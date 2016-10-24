@@ -33,8 +33,8 @@ module JSONAPI
         @data = @document['data']
         @type = @data['type']
         @id   = @data['id']
-        @attributes    = @data['attributes']
-        @relationships = @data['relationships']
+        @attributes    = @data['attributes'] || {}
+        @relationships = @data['relationships'] || {}
         deserialize!
       end
 
