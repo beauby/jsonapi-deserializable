@@ -1,4 +1,3 @@
-require 'jsonapi/deserializable/exceptions'
 require 'jsonapi/deserializable/relationship_dsl'
 
 module JSONAPI
@@ -7,31 +6,45 @@ module JSONAPI
       include RelationshipDSL
 
       class << self
-        attr_accessor :field_blocks, :validations
+        attr_accessor :has_one_block, :has_many_block
       end
 
-      self.field_blocks = {}
-      self.validations = {}
-
       def self.inherited(klass)
-        klass.field_blocks = field_blocks.dup
-        klass.validations = Marshal.load(Marshal.dump(validations))
+        klass.has_one_block  = has_one_block
+        klass.has_many_block = has_many_block
+      end
+
+      def self.call(payload)
+        new(payload).to_h
       end
 
       def initialize(payload)
-        JSONAPI.validate_relationship!(payload, validations)
         @document = payload
         @data = payload['data']
+        deserialize!
       end
 
       def to_h
-        return nil if @data.nil?
-        return @_hash if @_hash
-        @_hash = {}
-        self.class.field_blocks.each do |key, block|
-          @_hash[key] = instance_eval(&block)
+        @hash
+      end
+
+      private
+
+      def deserialize!
+        @hash = {}
+        if @data.is_a?(Array)
+          ids = @data.map { |ri| ri['id'] }
+          types = @data.map { |ri| ri['type'] }
+          instance_exec(@document, ids, types, &self.class.has_many_block)
+        else
+          id = @data && @data['id']
+          type = @data && @data['type']
+          instance_exec(@document, id, type, &self.class.has_one_block)
         end
-        @_hash
+      end
+
+      def field(hash)
+        @hash.merge!(hash)
       end
     end
   end

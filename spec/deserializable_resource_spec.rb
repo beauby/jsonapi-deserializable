@@ -26,92 +26,99 @@ describe JSONAPI::Deserializable::Resource, '#to_h' do
     }
   end
 
-  it 'succeeds ensuring presence of id when present' do
+  it 'deserializes primary type' do
     deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
-      required do
-        id
-      end
+      type { |type| field type: type }
     end
 
-    actual = deserializable_klass.new(@payload).to_h
-    expected = {}
+    actual = deserializable_klass.(@payload)
+    expected = { type: 'users' }
 
-    expect(actual[:_payload]).to eq(@payload)
-    actual.delete(:_payload)
     expect(actual).to eq(expected)
   end
 
-  it 'fails ensuring presence of id when absent' do
+  it 'deserializes primary id when present' do
     deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
-      required do
-        id
-      end
+      id { |id| field id: id }
+    end
+
+    actual = deserializable_klass.(@payload)
+    expected = { id: '1' }
+
+    expect(actual).to eq(expected)
+  end
+
+  it 'does not deserialize primary id when absent' do
+    deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
+      id { |id| field id: id }
     end
 
     payload = {
       'data' => { 'type' => 'users' }
     }
+    actual = deserializable_klass.(payload)
+    expected = {}
 
-    expect { deserializable_klass.new(payload) }
-      .to raise_error(JSONAPI::Deserializable::INVALID_DOCUMENT)
+    expect(actual).to eq(expected)
   end
 
-  it 'handles attributes as fields' do
+  it 'handles attributes' do
     deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
-      field(:username) { @attributes['name'] }
-      field(:address) { @attributes['address'] }
+      attribute(:name) { |name| field username: name }
+      attribute(:address) { |address| field address: address }
     end
 
-    actual = deserializable_klass.new(@payload).to_h
+    actual = deserializable_klass.(@payload)
     expected = {
       username: 'Name',
       address: 'Address'
     }
 
-    expect(actual[:_payload]).to eq(@payload)
-    actual.delete(:_payload)
     expect(actual).to eq(expected)
   end
 
-  it 'handles relationships as fields' do
+  it 'handles has_one relationships' do
     deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
-      field(:sponsor_id) { @relationships['sponsor']['data']['id'] }
-      field(:post_ids) { @relationships['posts']['data'].map { |ri| ri['id'] } }
+      has_one(:sponsor) { |rel| field sponsor_id: rel['data']['id'] }
     end
 
-    actual = deserializable_klass.new(@payload).to_h
+    actual = deserializable_klass.(@payload)
     expected = {
-      sponsor_id: '1337',
+      sponsor_id: '1337'
+    }
+
+    expect(actual).to eq(expected)
+  end
+
+  it 'handles has_many relationships' do
+    deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
+      has_many(:posts) do |rel|
+        field post_ids: rel['data'].map { |ri| ri['id'] }
+      end
+    end
+
+    actual = deserializable_klass.(@payload)
+    expected = {
       post_ids: %w(123 234 345)
     }
 
-    expect(actual[:_payload]).to eq(@payload)
-    actual.delete(:_payload)
     expect(actual).to eq(expected)
   end
 
   it 'works' do
     deserializable_klass = Class.new(JSONAPI::Deserializable::Resource) do
-      required do
-        type :users
-        id
-        attribute :name
-        has_one :sponsor, [:users, :superusers]
-      end
-
-      optional do
-        attribute :address
-        has_many :posts, :posts
-      end
-
       id
+      attribute(:name) { |name| field username: name }
       attribute :address
-      attribute :username, key: :name
-      has_many_ids :post_ids, key: :posts
-      has_one_id :sponsor_id, key: :sponsor
+      has_one :sponsor do |_, id|
+        field sponsor_id: id
+      end
+      has_many :posts do |_, ids|
+        field post_ids: ids
+      end
     end
 
-    actual = deserializable_klass.new(@payload).to_h
+    actual = deserializable_klass.(@payload)
     expected = {
       id: '1',
       username: 'Name',
@@ -120,8 +127,6 @@ describe JSONAPI::Deserializable::Resource, '#to_h' do
       post_ids: %w(123 234 345)
     }
 
-    expect(actual[:_payload]).to eq(@payload)
-    actual.delete(:_payload)
     expect(actual).to eq(expected)
   end
 end

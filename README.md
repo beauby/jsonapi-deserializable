@@ -1,8 +1,6 @@
 # jsonapi-deserializable
-Ruby gem for validating and deserializing [JSON API](http://jsonapi.org)
-payloads into custom hashes.
-Built upon the [jsonapi-validations](https://github.com/beauby/jsonapi/tree/master/validations)
-gem.
+Ruby gem for deserializing [JSON API](http://jsonapi.org) payloads into custom
+hashes.
 
 ## Status
 
@@ -31,54 +29,23 @@ require 'jsonapi/deserializable'
 ```
 
 Then, define some resource/relationship classes:
+
+### Resources
+
 ```ruby
-class DeserializableUser < JSONAPI::Deserializable::Resource
-  # List of required attributes / has_many/has_one relationships.
-  #   This directive is not mandatory. If not declared, no field
-  #   will be required.
-  required do
-    id # Optional, require an id for the primary resource.
-
-    type :users # Optional, force a type for the primary resource.
-    # or, still optional, force a set of allowed types for the primary resource:
-    types [:users, :superusers] # Optional,
-
-    attribute :name
-    has_one :sponsor
-    # or, optionally, spcecify a type for the relationship target:
-    has_one :sponsor, :users
+class DeserializableCreatePost < JSONAPI::Deserializable::Resource
+  type
+  attribute :title
+  attribute :date { |date| field date: DateTime.parse(date) }
+  has_one :author do |rel, id, type|
+    field author_id: id
+    field author_type: type
   end
-
-  # List of optional attributes / has_many/has_one relationships.
-  #   This directive is not mandatory. If not declared, all fields
-  #   will be allowed. If declared, all fields that are not within
-  #   eitheroptional or required will be rejected.
-  optional do
-    attribute :address
-    has_many :posts
-    # or, optionally, specify a set of allowed types for the primary resource:
-    has_many :posts, [:posts, :blogs]
-  end
-
-  ## The actual fields of the generated hash.
-  # `attribute` is a shorthand for `field(key) { @attributes.send(key) }`.
-  attribute :address
-
-  field :id do
-    @data.id
-  end
-
-  # `field` is the standard method for defining a key on the result hash.
-  field :username do
-    @document.data.attributes.name
-  end
-
-  field :post_ids do
-    @relationships.posts.data.map(&:id)
-  end
-
-  field :sponsor_id do
-    @relationships.sponsor.data && @relationships.sponsor.data.id
+  has_many :comments do |rel, ids, types|
+    field comment_ids: ids
+    field comment_types: types.map do |type|
+      camelize(singularize(type))
+    end
   end
 end
 ```
@@ -87,33 +54,50 @@ Finally, build your hash from the deserializable resource:
 payload = {
   'data' => {
     'id' => '1',
-    'type' => 'users',
+    'type' => 'posts',
     'attributes' => {
-      'name' => 'Name',
-      'address' => 'Address'
+      'title' => 'Title',
+      'date' => '2016-01-10 02:30:00'
     },
     'relationships' => {
-      'sponsor' => {
+      'author' => {
         'data' => { 'type' => 'users', 'id' => '1337' }
       },
-      'posts' => {
+      'comments' => {
         'data' => [
-          { 'type' => 'posts', 'id' => '123' },
-          { 'type' => 'posts', 'id' => '234' },
-          { 'type' => 'posts', 'id' => '345' }
+          { 'type' => 'comments', 'id' => '123' },
+          { 'type' => 'comments', 'id' => '234' },
+          { 'type' => 'comments', 'id' => '345' }
         ]
       }
     }
   }
 }
 
-DeserializableUser.new(payload).to_h
+DeserializableCreateUser.(payload)
 # => {
-#      username: 'Name',
-#      address: 'Address',
-#      sponsor_id: '1337',
-#      post_ids: ['123', '234', '345']
+#      id: '1',
+#      title: 'Title',
+#      date: #<DateTime: 2016-01-10T02:30:00+00:00 ((2457398j,9000s,0n),+0s,2299161j)>,
+#      author_id: '1337',
+#      author_type: 'users',
+#      comment_ids: ['123', '234', '345']
+#      comment_types: ['Comment', 'Comment', 'Comment']
 #    }
+```
+
+### Relationships
+
+```
+class DeserializablePostComments < JSONAPI::Deserializable::Relationship
+  has_many do |rel, ids, types|
+    field comment_ids: ids
+    field comment_types: types.map do |ri|
+      camelize(singularize(type))
+    end
+    field comments_meta: rel['meta']
+  end
+end
 ```
 
 ## License
