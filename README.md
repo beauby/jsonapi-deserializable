@@ -1,3 +1,6 @@
+# MOVED
+## Development now takes place in [jsonapi-rb/deserializable](https://github.com/jsonapi-rb/deserializable).
+
 # jsonapi-deserializable
 Ruby gem for deserializing [JSON API](http://jsonapi.org) payloads into custom
 hashes.
